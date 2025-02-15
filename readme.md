@@ -86,7 +86,7 @@ Start the server (npm or Docker) and open the mock server at [http://localhost:9
 In a new terminal, run the sample client:
 
 ```bash
-node client/server.js
+node test_client/server.js
 ```
 
 This opens up a server at `localhost:8000`. For webhook validation, the client will need to be exposed to the internet with a tunnel, like [ngrok](https://ngrok.com/).
