@@ -76,10 +76,16 @@ class MediaHandler {
             RTMSState.videoRecorder = new MediaRecorder(videoStream, videoConfig);
             RTMSState.audioRecorder = new MediaRecorder(audioStream, audioConfig);
 
+            // Add error event listeners
+            RTMSState.videoRecorder.onerror = (e) => logDebug(`Video recorder error: ${e.name}`);
+            RTMSState.audioRecorder.onerror = (e) => logDebug(`Audio recorder error: ${e.name}`);
+
             logDebug(`Audio recorder state: ${RTMSState.audioRecorder.state}`);
             logDebug(`Audio recorder mimeType: ${RTMSState.audioRecorder.mimeType}`);
 
             this.setupRecorderEventHandlers();
+        } else {
+            console.warn('Attempted to set up MediaRecorders while one is already active.');
         }
     }
 
@@ -121,7 +127,6 @@ class MediaHandler {
         RTMSState.audioRecorder.onpause = () => logDebug('Audio recorder paused');
         RTMSState.audioRecorder.onresume = () => logDebug('Audio recorder resumed');
         RTMSState.audioRecorder.onstop = () => logDebug('Audio recorder stopped');
-        RTMSState.audioRecorder.onerror = (e) => logDebug(`Audio recorder error: ${e.name}`);
     }
 
     static startRecording() {
@@ -175,7 +180,7 @@ class MediaHandler {
                 let transcript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
-                        transcript += event.results[i][0].transcript;
+                        transcript += event.results[i][0].transcript.replace(/'/g, '"');
                     }
                 }
                 

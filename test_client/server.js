@@ -58,8 +58,6 @@ app.post('/', (req, res) => {
 
     // Handle RTMS start event
     if (payload?.event === 'meeting.rtms.started' && payload?.payload?.object) {
-        console.log('Received RTMS start event. Full request body:', JSON.stringify(req.body, null, 2));
-        
         const {
             clientId,
             payload: {
@@ -68,13 +66,6 @@ app.post('/', (req, res) => {
                 }
             }
         } = req.body;
-
-        console.log('Extracted RTMS details:', {
-            clientId,
-            meeting_uuid,
-            rtms_stream_id,
-            server_urls
-        });
 
         connectToRTMSWebSocket(clientId, meeting_uuid, rtms_stream_id, server_urls);
     }
@@ -121,7 +112,7 @@ function connectToRTMSWebSocket(clientId, meetingUuid, streamId, serverUrl) {
         switch (message.msg_type) {
             case "SIGNALING_HAND_SHAKE_RESP":
                 if (message.status_code === "STATUS_OK") {
-                    const mediaServerUrl = message.media_server.server_urls.all;
+                    const mediaServerUrl = message.media_server.server_urls.transcript;
                     connectToMediaWebSocket(mediaServerUrl, clientId, meetingUuid, streamId);
                 }
                 break;
