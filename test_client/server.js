@@ -1,5 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const WebSocket = require('ws');
 
 const app = express();
@@ -169,10 +171,58 @@ function connectToMediaWebSocket(endpoint, clientId, meetingUuid, streamId) {
         mediaWs.send(JSON.stringify(dataHandshakeMessage));
     });
 
-    mediaWs.on("message", (data) => {
+    function saveTranscript(transcriptData) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const transcriptDir = path.join(__dirname, 'transcripts');
+        
+        // Create transcripts directory if it doesn't exist
+        if (!fs.existsSync(transcriptDir)) {
+            fs.mkdirSync(transcriptDir, { recursive: true });
+        }
+        
+        const filePath = path.join(transcriptDir, `transcript_${timestamp}.txt`);
+        
+        // Append the transcript with timestamp
+        const formattedTranscript = `[${new Date().toLocaleTimeString()}] ${transcriptData}\n`;
+        
+        fs.appendFile(filePath, formattedTranscript, (err) => {
+            if (err) {
+                console.error('Error saving transcript:', err);
+            } else {
+                console.log('Transcript saved to:', filePath);
+            }
+        });
+    }
+
+    mediaWs.on("message", async (data) => {
         const message = JSON.parse(data);
-        // Handle media data here
-        console.log("Received media data:", message);
+
+        console.log("hello hello hello", message);
+        
+        // Check if it's a transcript message
+        if (message.msg_type === "MEDIA_DATA_TRANSCRIPT" && message.content?.data) {
+            // Save transcript locally
+            saveTranscript(message.content.data);
+            
+            // Send transcript to Magic Loops API
+            try {
+                const url = 'https://magicloops.dev/api/loop/e18e2d95-a443-47f8-95ea-099095414b72/run';
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        "transcript": message.content.data 
+                    }),
+                });
+                
+                const responseJson = await response.json();
+                console.log('Magic Loops API response:', responseJson);
+            } catch (error) {
+                console.error('Error sending transcript to Magic Loops:', error);
+            }
+        }
     });
 
     mediaWs.on("close", () => {
