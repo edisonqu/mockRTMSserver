@@ -2,6 +2,8 @@ const WebSocket = require("ws");
 const WebSocketUtils = require('../utils/wsUtils');
 const CONFIG = require('../config/serverConfig');
 const SignalingHandler = require('./signalingHandler');
+const fs = require('fs');
+const path = require('path');
 
 class MediaHandler {
     static setupMediaServer(httpServer) {
@@ -48,8 +50,15 @@ class MediaHandler {
             console.log("Received message on media channel:", message.msg_type);
 
             if (message.msg_type === "MEDIA_DATA_AUDIO") {
+            this.saveTranscript(message.content.data);
+
                 console.log("Received audio data, length:", message.content.data.length);
             }
+
+                    // Add this condition to handle transcripts
+        if (message.msg_type === "MEDIA_DATA_TRANSCRIPT" && message.content?.data) {
+            this.saveTranscript(message.content.data);
+        }
 
             if (message.msg_type === "SESSION_STATE_UPDATE" && 
                 global.signalingWebsocket?.readyState === WebSocket.OPEN) {
@@ -167,6 +176,22 @@ class MediaHandler {
                 global.mediaServer = null;
             });
         }
+    }
+
+    static saveTranscript(transcriptData) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filePath = path.join(__dirname, '../../data', `transcript_${timestamp}.txt`);
+        console.log("hellofeawofihefoia,",transcriptData);
+        
+        // // Format the transcript data with timestamp
+        // const formattedTranscript = `[${new Date().toLocaleString()}] ${transcriptData}\n`;
+        
+        // // Append to file
+        // fs.appendFile(filePath, formattedTranscript, (err) => {
+        //     if (err) {
+        //         console.error('Error saving transcript:', err);
+        //     }
+        // });
     }
 }
 
