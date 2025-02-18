@@ -172,24 +172,23 @@ function connectToMediaWebSocket(endpoint, clientId, meetingUuid, streamId) {
     });
 
     function saveTranscript(transcriptData) {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const timestamp = new Date().toLocaleTimeString();
         const transcriptDir = path.join(__dirname, 'transcripts');
+        const singleTranscriptFile = path.join(transcriptDir, 'complete_transcript.txt');
         
         // Create transcripts directory if it doesn't exist
         if (!fs.existsSync(transcriptDir)) {
             fs.mkdirSync(transcriptDir, { recursive: true });
         }
         
-        const filePath = path.join(transcriptDir, `transcript_${timestamp}.txt`);
-        
         // Append the transcript with timestamp
-        const formattedTranscript = `[${new Date().toLocaleTimeString()}] ${transcriptData}\n`;
+        const formattedTranscript = `[${timestamp}] ${transcriptData}\n`;
         
-        fs.appendFile(filePath, formattedTranscript, (err) => {
+        fs.appendFile(singleTranscriptFile, formattedTranscript, (err) => {
             if (err) {
                 console.error('Error saving transcript:', err);
             } else {
-                console.log('Transcript saved to:', filePath);
+                console.log('Transcript saved to:', singleTranscriptFile);
             }
         });
     }
@@ -204,8 +203,21 @@ function connectToMediaWebSocket(endpoint, clientId, meetingUuid, streamId) {
             // Save transcript locally
             saveTranscript(message.content.data);
             
-            // Send transcript to Magic Loops API
+
+        }
+
+
+        if(message.msg_type === "STREAM_STATE_UPDATE" && message.state === "TERMINATED"){            
             try {
+                const transcriptDir = path.join(__dirname, 'transcripts');
+                const transcriptFile = path.join(transcriptDir, 'complete_transcript.txt');
+                
+                // Read the entire transcript file
+                const fullTranscript = fs.readFileSync(transcriptFile, 'utf8');
+
+                console.log(fullTranscript);
+                
+                
                 const url = 'https://magicloops.dev/api/loop/e18e2d95-a443-47f8-95ea-099095414b72/run';
                 const response = await fetch(url, {
                     method: 'POST',
@@ -213,9 +225,13 @@ function connectToMediaWebSocket(endpoint, clientId, meetingUuid, streamId) {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ 
-                        "transcript": message.content.data 
+                        "transcript": fullTranscript 
                     }),
                 });
+                
+                // Clear the transcripts directory after sending
+                fs.rmSync(transcriptDir, { recursive: true, force: true });
+                fs.mkdirSync(transcriptDir);
                 
                 const responseJson = await response.json();
                 console.log('Magic Loops API response:', responseJson);
